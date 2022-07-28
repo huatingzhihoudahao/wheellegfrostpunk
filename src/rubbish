@@ -1,0 +1,198 @@
+      //         //求这一个点和前一个点拉成的向量  与  垂直的法向量  之间的余弦值[-1,1],再arccos，求出夹角[0~90]弧度[0,1.57],用弧度的三次方当代价
+//         //算了 感觉这一个点和前一个点拉向量的话，梯度求法得变动，毕竟涉及到上一个p，改成这个点与圆心拉向量吧
+//         //算了先不管方向吧，先试试看，求完余弦值直接平方好了
+//         //算了 搀和上余弦，分母还有向量模，好麻烦，不如我用到垂直法向量的距离当cost好了，梯度方向正好也有了
+
+
+      Eigen::Vector3d O=center_list[temp];
+      double distP2O=(O-p).norm();
+      double lamda2=normal_vector_list[temp](1)/normal_vector_list[temp](0);//k
+      double lamda1=-normal_vector_list[temp](0)/normal_vector_list[temp](1);//-1/k
+
+      double x= (lamda1*p(0)-lamda2*O(0)+O(1)-p(1))/(lamda1-lamda2);
+      double y= ((lamda1+lamda2)*x-lamda1*p(0)-lamda2*O(0)+O(1)+p(1))/2;
+      Eigen::Vector3d vector;vector(2)=0;vector(1)=y-p(1);vector(0)=x-p(0);
+
+      costp = this->rhoP_vertical * vector.squaredNorm();//H(P)
+      gradp = -this->rhoP_vertical *2* vector;
+      //v.squaredNorm()!=v.dot(v);所以不是∂vector/∂p  而是∂vector.squaredNorm()/∂p
+      // gradp(0)=gradp(0)*(lamda1/(lamda1-lamda2)-1);
+      // gradp(1)=gradp(1)*(0.5-0.5*(lamda1+lamda2)/(lamda1-lamda2));//  ∂H/∂p
+
+      // cout<<"costp1  "<<costp<<endl;
+      // cout<<"gradp1"<<gradp<<endl;
+
+      Eigen::Vector3d OP=p-O;Eigen::Vector3d n=normal_vector_list[temp];n.normalize();
+      costp = this->rhoP_vertical * (OP(0)*OP(0)+OP(1)*OP(1) - n(0)*n(0)*OP(0)*OP(0)- n(1)*n(1)*OP(1)*OP(1)-2*n(0)*n(1)*OP(0)*OP(1));
+      gradp(0) = this->rhoP_vertical*(2*OP(0)-n(0)*n(0)*2*OP(0)-2*n(0)*n(1)*OP(1));
+      gradp(1) = this->rhoP_vertical*(2*OP(1)-n(1)*n(1)*2*OP(1)-2*n(0)*n(1)*OP(0));
+      // cout<<"costp2  "<<costp<<endl;
+      // cout<<"gradp2  "<<gradp<<endl;
+
+      Eigen::Vector3d n_n = normal_vector_list[temp].normalized().cross(Eigen::Vector3d(0, 0, 1));
+      double proj = n_n.dot(p-O);
+      costp = this->rhoP_vertical *proj * proj;
+      gradp = this->rhoP_vertical *2 * proj * n_n;
+      // cout<<"costp3  "<<costp<<endl;
+      // cout<<"gradp3  "<<gradp<<endl;
+
+
+
+
+
+      Eigen::Vector3d O=center_list[temp];
+      double distPO=(p-O).dot(p-O);
+      Eigen::Vector3d n_n = normal_vector_list[temp].normalized().cross(Eigen::Vector3d(0, 0, 1));
+      double proj = n_n.dot(p-O);
+      double Hp;Eigen::Vector3d H_by_p;
+      Hp = this->rhoP_vertical *proj * proj;
+      H_by_p = this->rhoP_vertical *2 * proj * n_n;
+
+      double temp_grad_1d,sigmoid_cp;Eigen::Vector3d c_by_p;
+      sigmoid_cp=sigmoid(r-distPO,temp_grad_1d);
+      c_by_p=(-1/distPO)*(p-O);
+      costp=Hp*sigmoid_cp;
+      gradp=H_by_p*sigmoid_cp+ Hp*temp_grad_1d*c_by_p;
+
+        Eigen::Vector3d test_grad_vis= -proj * n_n;
+        if((print_grad)&&(sigmoid_cp!=0))
+        {
+        vis_grad(p,test_grad_vis);
+        }
+
+
+
+
+      Eigen::Vector3d O=center_list[temp];
+      double distP2O=(O-p).norm();
+
+      Eigen::Vector3d n_n = normal_vector_list[temp].normalized().cross(Eigen::Vector3d(0, 0, 1));
+      double proj = n_n.dot(p-O);
+
+        costp = this->rhoP_vertical *proj * proj;
+        gradp = this->rhoP_vertical *2 * proj * n_n;
+        Eigen::Vector3d test_grad_vis= -proj * n_n;
+                    if(print_grad)
+        {
+        vis_grad(p,test_grad_vis);
+        }
+
+
+
+      double temp_grad;double cost_sigmoid,c_by_px,c_by_py;
+      // cost_sigmoid=sigmoid(r*r-distP2O*distP2O,temp_grad);
+      cost_sigmoid=sigmoid(r-distP2O,temp_grad);
+      costp=costp*cost_sigmoid;
+      // c_by_px=-2*(p(0)-O(0));
+      // c_by_py=-2*(p(1)-O(1));
+      c_by_px=(-1/distP2O)*(p(0)-O(0));
+      c_by_py=(-1/distP2O)*(p(1)-O(1));
+
+      gradp(0)=gradp(0)*cost_sigmoid+ this->rhoP_vertical *proj * proj*temp_grad*c_by_px;
+      gradp(1)=gradp(1)*cost_sigmoid+ this->rhoP_vertical *proj * proj*temp_grad*c_by_py;
+        //或者是PO点积  余弦 ....
+
+
+
+
+
+
+
+
+
+  //如果想在优化xy的垂直于坎儿也就是type=1的时候  把h的优化一并做了
+  //可能会因为优化的点的2d上位置变动导致z一会有gap一会没gap，频繁的摄动可能导致不连续balabala。
+  //而且xy和z的时间会对齐, 虽然梯度2d和h分开的,但cost会加上h轴部分的，导致2d的优化部分受累于对z的迁就？俺不懂  还是想办法分开把
+  //规划h  如果想单独规划h的话，没法把每个采样点经过2d规划后的坐标扔进去然后getgap,minco会自动优化xy的smoothness项
+  //我在想我规划h的时候没有给基于esdf之类的惩罚为什么minco不把轨迹拉直？估计是因为我初始化的时候用的轨迹是第二次的轨迹，在此基础上进行的优化，可能会陷入局部最优，导致没有拉直？
+  //而我之前那回拉直是因为我init的xy全是0吧，开始的值不在局部最优附近
+  //关于minco会自动优化xy的smoothness项 我试试关掉calGrads_CT 成功了
+  //但是按照我的写法，加上了z的smoothness，但是问题是，我没有把z的时间优化项关掉，但是xy固定之后，时间T就不应该再进行优化了
+  //于是我又        else  gradViolaAt=0; 以及在minco.hpp把gradT的关了，不知道对不对 很有可能是错的，但反正1004出来结果也还ok，而且我的tracking暂时不需要时间信息
+ 
+ 
+ //(到顶的话分别是0.248，0.511)   (0.774+0.248)/2=0.511
+ //拉倒 这样效果真的不好  我想想怎么拼吧
+//之前的height的cost计算方式
+
+
+      double gap=global_map_ptr_for_esdf->get_gap(p);
+        double rule;
+        if(float(gap) ==float(10000.0)||(float(gap) >0.774)){//麻了 只能勉强做到C1连续
+          if(p(2)<0.248){
+            costp=this->rhoP * pow(p(2)-1.248,4);//在0.248处=1
+            gradp(2)=this->rhoP * 4*pow(p(2)-1.248,3);//在0.248处=-4
+          }
+          else if(p(2)<0.511){
+            costp= this->rhoP* 14.1573 *pow(p(2)-0.511,2);//在0.248处=1
+            gradp(2)=this->rhoP * 14.1573*2 *pow(p(2)-0.511,1);//在0.248处=-7.44  
+          }
+          else{
+            costp=this->rhoP_h *  pow((p(2)-0.511)*10,2);
+            gradp(2)=this->rhoP_h*  2*pow((p(2)-0.511)*10,1)*10;    
+          }
+ 
+        }
+        else{
+          rule=(0.248+gap)/2;
+          ROS_ERROR("rule  %f",rule);
+          if(p(2)<0.248){
+            costp=this->rhoP_h * pow(p(2)-1.248,4);//在0.248处=1
+            gradp(2)=200*this->rhoP_h * 4*pow(p(2)-1.248,3);//在0.248处=-4
+          }
+          else if(p(2)<rule){
+            costp= this->rhoP_h * (1/((0.248-rule)*(0.248-rule)))*pow(p(2)-rule,2);
+            gradp(2)=this->rhoP_h *(1/((0.248-rule)*(0.248-rule)))* 2*pow(p(2)-rule,1);         
+          }
+          else{
+            costp=this->rhoP_h *  pow((p(2)-rule)*10,2);
+            gradp(2)=this->rhoP_h *  2*pow((p(2)-rule)*10,1)*10;    
+          } 
+        }
+
+        cout<<"                p(2)   "<<p(2)<<endl;
+        cout<<"costp  "<<costp<<endl;
+        cout<<"                                gradp(2)      "<<gradp(2)<<endl;
+
+
+
+//仿照esdf的效果也巨差无比，根本出不来结果
+        double upper=global_map_ptr_for_esdf->get_gap(p);
+        double lower=0.248;
+        double rule;
+        double min_dist_2_occ=0;double gradient_dir=0;
+        if(float(upper) ==float(10000.0))
+          upper=0.511;
+        if(p(2)<lower){
+          min_dist_2_occ=-(lower-p(2));//相当于esdf中的在障碍物里面   负数
+          gradient_dir=1;
+        }
+        else if(p(2)<upper){
+          if((p(2)-lower)>(upper-p(2))){//靠近upper
+            min_dist_2_occ=upper-p(2);
+            gradient_dir=-1;
+          }
+          else{//靠近lower
+            min_dist_2_occ=p(2)-lower;
+            gradient_dir=1;
+          }
+
+        }
+        else{
+          min_dist_2_occ=-(p(2)-upper);//相当于esdf中的在障碍物里面   负数
+          gradient_dir=-1;
+        }
+        double dist0_=0.5;
+        if (min_dist_2_occ < dist0_) {
+            costp= this->rhoP_h * pow(( dist0_-min_dist_2_occ ), 3);
+            gradp(2)= -this->rhoP_h *3.0 * pow((dist0_ - min_dist_2_occ), 2) * gradient_dir;
+            if(print_grad){
+          cout<<"min_dist_2_occ "<<min_dist_2_occ<<endl;
+          cout<<"                            gradient_dir "<<gradient_dir<<endl;
+          cout<<"                                            costp "<<costp<<endl;
+          cout<<"                                                                    gradp(2) "<<gradp(2)<<endl;
+            }
+
+            return true;
+        } 
+

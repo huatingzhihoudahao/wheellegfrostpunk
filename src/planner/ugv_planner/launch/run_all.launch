@@ -1,0 +1,7 @@
+<launch>
+
+    <node pkg="ugv_planner" name="ugv_planner_node" type="ugv_planner_node" output="screen">
+      <rosparam file="$(find ugv_planner)/config/global_planning.yaml" command="load" />
+    </node>
+    
+</launch>

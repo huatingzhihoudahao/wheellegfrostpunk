@@ -1,0 +1,57 @@
+subscribe_cloudTopic:                  '/map_generator/global_cloud'  #/globalmap 
+
+pub_surface_grid_Topic1:                '/surface_grid1' 
+pub_surface_grid_Topic2:                '/surface_grid2' 
+pub_esdf_Topic:                 '/esdf' 
+
+pub_feasible_grid_Topic:         '/feasible_grid'
+
+resolution:                 0.1 
+
+mapBound:                [-25, 25, -20, 15, -1, 5] #[0, 14, 0, 11, -1, 5]  # [0, 14, -17, -3, 9, 25]  # [-25, 25, -20, 15, -0.2, 23] 
+
+esdf_vis_slice_height_:      15
+
+sub_goal:                     '/anchor_3D_goal'
+
+robot_radius:                   0.206865
+robot_wheel_radius:             0.076
+robot_height_min:               0.248  
+robot_height_max:               0.511  
+robot_jump_highest:             0.6  
+robot_jump_fathest:             1  
+robot_jump_v2d_max:             1.5
+
+TimeoutRRT:                 0.02
+
+MaxVelMag:                  4.0
+
+MaxBdrMag:                  2.1
+
+MaxTiltAngle:               1.05
+
+MinThrust:                  2.0
+
+MaxThrust:                  12.0
+
+VehicleMass:                0.61
+
+GravAcc:                    9.8
+
+HorizDrag:                  0.70
+
+VertDrag:                   0.80
+
+ParasDrag:                  0.01
+
+SpeedEps:                   0.0001
+
+WeightT:                    20.0
+
+ChiVec:                     [1.0e+4, 1.0e+4, 1.0e+4, 1.0e+4]
+
+SmoothingEps:               1.0e-2
+
+IntegralIntervs:            16
+
+RelCostTol:                 1.0e-5
